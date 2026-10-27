@@ -40,12 +40,19 @@
     const convite = await F.getDoc(refConvite).catch(() => null);
     if (!convite || !convite.exists()) throw erro('convite_invalido');
     try { localStorage.setItem(CHAVE_CODIGO, codigo); } catch (e) { /* sem armazenamento */ }
-    const lote = F.writeBatch(db);
-    if (convite.data().uid !== uid) lote.update(refConvite, { uid });
-    lote.set(F.doc(db, 'acessos', uid), { codigo, em: F.serverTimestamp() });
-    await lote.commit();
-    const casos = (await F.getDocs(F.query(F.collection(db, 'casos'), F.orderBy('ordem')))).docs.map((d) => d.data());
-    const resp = await F.getDoc(F.doc(db, 'respostas', codigo));
+    // Na primeira vez (ou em outro navegador), vincula o código a esta sessão.
+    // Quem volta pelo mesmo navegador já está vinculado: pula a gravação.
+    if (convite.data().uid !== uid) {
+      const lote = F.writeBatch(db);
+      lote.update(refConvite, { uid });
+      lote.set(F.doc(db, 'acessos', uid), { codigo, em: F.serverTimestamp() });
+      await lote.commit();
+    }
+    const [snapCasos, resp] = await Promise.all([
+      F.getDocs(F.query(F.collection(db, 'casos'), F.orderBy('ordem'))),
+      F.getDoc(F.doc(db, 'respostas', codigo)),
+    ]);
+    const casos = snapCasos.docs.map((d) => d.data());
     status('Salvo na nuvem');
     return { casos, estado: resp.exists() ? resp.data().estado : null, convite: convite.data() };
   }
