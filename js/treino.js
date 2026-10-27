@@ -61,12 +61,12 @@ window.CRIVO_MODULOS = [
       </ul>
       <p>Em diagnósticos de <strong>risco</strong>, as evidências são fatores de risco: o problema em si ainda não precisa estar presente.</p>`,
     quiz: [
-      { k: 'm2q1', perg: 'O resumo diz "sem edemas". A IA indica "Edema" como evidência. Resposta no item 1.2?',
+      { k: 'm2q1', item: '1.2 · Cada evidência indicada pela IA está sustentada pelos dados do caso?', perg: 'O resumo diz "sem edemas". A IA indica "Edema" como evidência. A evidência está sustentada?',
         ops: ['Sim', 'Não'], certo: 1, exp: 'O dado é contradito pelo resumo.' },
-      { k: 'm2q2', perg: 'O resumo diz "FiO2 50% e PEEP 10 para SpO2 de 93%". A IA indica "Hipoxemia". Resposta no item 1.2?',
+      { k: 'm2q2', item: '1.2 · Cada evidência indicada pela IA está sustentada pelos dados do caso?', perg: 'O resumo diz "FiO2 50% e PEEP 10 para SpO2 de 93%". A IA indica "Hipoxemia" como evidência. A evidência está sustentada?',
         ops: ['Sim', 'Não'], certo: 0, exp: 'Precisar de FiO2 alta e PEEP para manter 93% é equivalência clínica direta de hipoxemia.' },
-      { k: 'm2q3', perg: 'A IA indicou uma evidência inexistente, mas o caso tem outras pistas relevantes, específicas e coerentes para o mesmo diagnóstico. Como fica o 1.1?',
-        ops: ['Nula, porque a evidência é falsa', 'Pode ser alta: o 1.1 olha o caso', 'Baixa, como punição pelo erro'], certo: 1,
+      { k: 'm2q3', item: '1.1 · Acurácia do diagnóstico pela EADE-2 (alta, moderada, baixa ou nula)', perg: 'A IA indicou uma evidência que não existe no caso, mas o caso tem outras pistas relevantes, específicas e coerentes para o mesmo diagnóstico. Como classificar a acurácia?',
+        ops: ['Nula, porque uma evidência é falsa', 'Pode ser alta, porque a acurácia olha todas as pistas do caso', 'Baixa, para registrar o erro'], certo: 1,
         exp: 'O erro na evidência é registrado no 1.2. O 1.1 classifica o diagnóstico diante de todas as pistas do caso.' },
     ],
   },
@@ -108,12 +108,12 @@ window.CRIVO_MODULOS = [
         </tbody></table></div>
       <ul><li><strong>5.7:</strong> o plano serve como ponto de partida para o enfermeiro elaborar o plano de cuidados?</li></ul>`,
     quiz: [
-      { k: 'm3q1', perg: 'Paciente em cuidado paliativo exclusivo. A IA sugere um resultado que mede recuperação funcional a longo prazo, bem ligado ao diagnóstico. Qual item deve receber nota baixa?',
-        ops: ['2.1 (ligação com o diagnóstico)', '2.2 (adequação ao caso)'], certo: 1,
+      { k: 'm3q1', item: '2.1 · Pertinente ao diagnóstico?  ·  2.2 · Pertinente ao caso (condição clínica e objetivo de cuidado)?', perg: 'Paciente em cuidado paliativo exclusivo. A IA sugere um resultado que mede recuperação funcional a longo prazo, bem ligado ao diagnóstico. Qual item deve receber nota baixa?',
+        ops: ['2.1, pertinência ao diagnóstico', '2.2, pertinência ao caso'], certo: 1,
         exp: 'A ligação com o diagnóstico existe; o que não cabe é o objetivo de cuidado deste paciente.' },
-      { k: 'm3q2', perg: 'A justificativa da IA cita "creatinina de 2,1 mg/dl". O resumo não traz creatinina. Resposta no 4.2?',
+      { k: 'm3q2', item: '4.2 · A justificativa menciona algum dado que não está no caso?', perg: 'A justificativa da IA cita "creatinina de 2,1 mg/dl". O resumo não traz creatinina. Qual a resposta?',
         ops: ['Sim', 'Não'], certo: 0, exp: 'É dado inventado. Escreva qual no campo que aparece.' },
-      { k: 'm3q3', perg: 'O resumo não registra avaliação psicológica e o plano não tem diagnóstico psicossocial. Isso conta como omissão no 5.1?',
+      { k: 'm3q3', item: '5.1 · O plano contempla as necessidades humanas básicas afetadas que os dados do caso evidenciam?', perg: 'O resumo não registra avaliação psicológica e o plano não tem diagnóstico psicossocial. Isso conta como falha do plano nesse item?',
         ops: ['Sim', 'Não'], certo: 1, exp: 'O 5.1 julga apenas as necessidades que os dados do caso evidenciam.' },
     ],
   },

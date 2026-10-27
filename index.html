@@ -172,9 +172,10 @@ table.resumo-t { border-collapse: collapse; width: 100%; font-variant-numeric: t
 .modulos { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
 .modulos li { display: flex; gap: 12px; align-items: center; justify-content: space-between; flex-wrap: wrap; border: 1px solid var(--line); border-radius: 8px; padding: 10px 14px; background: var(--surface); }
 .modulos .nm { display: flex; gap: 10px; align-items: baseline; }
-.leitura { max-width: 72ch; display: flex; flex-direction: column; gap: 12px; }
+.leitura { display: flex; flex-direction: column; gap: 12px; }
 .leitura ol, .leitura ul { margin: 0; padding-left: 1.3em; display: flex; flex-direction: column; gap: 6px; }
 .leitura h3 { margin-top: 6px; }
+.quiz-item { display: flex; flex-direction: column; gap: 2px; font-size: .9rem; color: var(--muted); border-left: 3px solid var(--accent); padding-left: 10px; }
 .quiz { border: 1px solid var(--line); border-radius: 8px; padding: 14px; display: flex; flex-direction: column; gap: 10px; background: var(--surface-2); }
 .op input:disabled { cursor: default; }
 .retorno { border-left: 4px solid var(--line); padding: 8px 12px; font-size: .9rem; background: var(--surface); border-radius: 0 8px 8px 0; grid-column: 1 / -1; }
@@ -333,7 +334,7 @@ window.iniciarCrivo = function (inicial) {
   function telaInicio() {
     const a = E.avaliador;
     app.innerHTML = `
-      <div class="pilha" style="max-width:820px">
+      <div class="pilha" style="max-width:960px">
         <div class="pilha" style="gap:8px">
           <p class="rotulo">Pré-teste do instrumento</p>
           <h1>Bem-vinda, bem-vindo ao pré-teste do CRIVO-PE</h1>
@@ -381,7 +382,7 @@ window.iniciarCrivo = function (inicial) {
     const t = T(); const g = CASO_TREINO ? rc(CASO_TREINO.id) : null;
     const acabou = t.situacao === 'concluido';
     app.innerHTML = `
-      <div class="pilha" style="max-width:820px">
+      <div class="pilha" style="max-width:960px">
         <div class="pilha" style="gap:8px"><p class="rotulo">Treinamento</p><h1>Antes de avaliar</h1>
           <p class="muted">${MODULOS.length} módulos curtos${CASO_TREINO ? ' e um caso guiado, com gabarito comentado ao final' : ''}. Leva cerca de ${minutosTreino()} minutos, e o tempo é registrado. Se você já conhece o CRIVO-PE e a EADE-2, pode pular; o treinamento continua disponível na tela dos casos.</p></div>
         <section class="painel pilha">
@@ -406,7 +407,7 @@ window.iniciarCrivo = function (inicial) {
     const t = T(); const i = t.mod; const m = MODULOS[i];
     const ultimo = i === MODULOS.length - 1;
     app.innerHTML = `
-      <div class="pilha" style="max-width:860px">
+      <div class="pilha">
         <div class="linha" style="justify-content:space-between">
           <button class="btn-link" id="btn-sumario">← Treinamento</button>
           <div class="relogio" aria-label="Tempo no treinamento"><span class="ponto" id="relogio-ponto"></span><span class="tempo" id="relogio-tempo">${mmss(tempoModulos())}</span></div>
@@ -415,7 +416,7 @@ window.iniciarCrivo = function (inicial) {
         <section class="painel leitura">${m.html}</section>
         ${m.quiz.length ? `<section class="painel pilha"><h2>Teste rápido</h2><p class="muted peq">Não conta para a pesquisa como avaliação; serve para fixar as regras.</p>
           ${m.quiz.map((q) => { const v = t.quiz[q.k]; const resp = v != null;
-            return `<div class="quiz"><p class="perg" style="font-weight:600">${esc(q.perg)}</p>
+            return `<div class="quiz">${q.item ? `<p class="quiz-item"><span class="rotulo">Item do instrumento</span>${esc(q.item)}</p>` : ''}<p class="perg" style="font-weight:600">${esc(q.perg)}</p>
               <div class="opcoes">${q.ops.map((o, j) => `<label class="op"><input type="radio" name="${q.k}" data-quiz="${q.k}" value="${j}" ${String(v) === String(j) ? 'checked' : ''} ${resp ? 'disabled' : ''}><span>${esc(o)}</span></label>`).join('')}</div>
               ${resp ? `<div class="retorno ${+v === q.certo ? 'certo' : 'errado'}"><strong>${+v === q.certo ? '✓ Correto' : 'Resposta esperada: ' + esc(q.ops[q.certo])}</strong>${esc(q.exp)}</div>` : ''}
             </div>`; }).join('')}
@@ -562,7 +563,7 @@ window.iniciarCrivo = function (inicial) {
     const q = E.questionario;
     const linha = (k, rot) => `<div class="opcoes">${rot.map((t, i) => `<label class="op"><input type="radio" name="q-${k}" data-q="${k}" value="${i + 1}" ${q[k] === String(i + 1) ? 'checked' : ''}><span><b>${i + 1}</b>${t}</span></label>`).join('')}</div>`;
     app.innerHTML = `
-      <div class="pilha" style="max-width:820px">
+      <div class="pilha" style="max-width:960px">
         <div class="pilha" style="gap:6px"><p class="rotulo">Questionário do pré-teste</p><h1>Como foi aplicar o instrumento?</h1>
           <p class="muted">Suas respostas orientam os ajustes de redação antes das rodadas com os juízes.</p></div>
         ${PARTES.map((p) => `<section class="painel pilha"><h2>Parte ${p.n}: ${p.nome}</h2>
