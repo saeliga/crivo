@@ -71,11 +71,14 @@ async function carregar() {
 
 function situacao(codigo) {
   const r = respostas[codigo]?.estado; if (!r) return ['', 'Não acessou'];
-  const conc = Object.values(r.respostas || {}).filter((x) => x.concluido).length;
+  const av = casos.filter((c) => !c.treino);
+  const conc = av.filter((c) => r.respostas?.[c.id]?.concluido).length;
   if (r.etapa === 'fim') return ['ok', 'Concluiu'];
-  return ['', `${conc} de ${casos.length} casos`];
+  const tr = { novo: '', andamento: ' · treinando', pulado: ' · pulou o treino', concluido: ' · treino concluído' }[r.treino?.situacao] || '';
+  return ['', `${conc} de ${av.length} casos${tr}`];
 }
-const tempoTotal = (codigo) => Object.values(respostas[codigo]?.estado?.respostas || {}).reduce((s, x) => s + (x.tempos?.total || 0), 0);
+// Tempo total, incluindo o treinamento (módulos e caso guiado).
+const tempoTotal = (codigo) => { const e = respostas[codigo]?.estado; return Object.values(e?.respostas || {}).reduce((s, x) => s + (x.tempos?.total || 0), 0) + Object.values(e?.treino?.tempos || {}).reduce((s, v) => s + v, 0); };
 
 function tela() {
   el.innerHTML = `
@@ -124,10 +127,16 @@ function exportar(tipo) {
       [1, 2, 3, 4, 5].forEach((p) => L.push([cod, nomeDe(cod)?.papel, caso, p, Math.round((x.tempos?.partes?.[p] || 0) / 1000), x.concluido ? 1 : 0]));
       L.push([cod, nomeDe(cod)?.papel, caso, 'total', Math.round((x.tempos?.total || 0) / 1000), x.concluido ? 1 : 0]);
     }));
+    // Treinamento: tempo por módulo (caso "treino-modulos"); o caso guiado já sai acima, com o id dele.
+    Object.entries(respostas).forEach(([cod, r]) => { const t = r.estado?.treino; if (!t) return;
+      Object.entries(t.tempos || {}).forEach(([m, ms]) => L.push([cod, nomeDe(cod)?.papel, 'treino-modulos', 'modulo' + (+m + 1), Math.round(ms / 1000), t.vistos?.[m] ? 1 : 0]));
+      L.push([cod, nomeDe(cod)?.papel, 'treino-modulos', 'situacao:' + t.situacao + (t.pulou ? ':pulou' : ''), '', t.situacao === 'concluido' ? 1 : 0]); });
     return baixar('crivo-tempos.csv', csv(L), 'text/csv');
   }
   L.push(['codigo', 'pergunta', 'valor']);
   Object.entries(respostas).forEach(([cod, r]) => Object.entries(r.estado?.questionario || {}).forEach(([k, v]) => L.push([cod, k, v])));
+  // Testes rápidos do treinamento: índice da opção escolhida na primeira tentativa (gabarito em js/treino.js).
+  Object.entries(respostas).forEach(([cod, r]) => Object.entries(r.estado?.treino?.quiz || {}).forEach(([k, v]) => L.push([cod, 'quiz_' + k, v])));
   baixar('crivo-questionario.csv', csv(L), 'text/csv');
 }
 

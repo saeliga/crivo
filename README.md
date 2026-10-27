@@ -7,6 +7,9 @@ Pós-Graduação em Enfermagem da UFRN.
 Estado atual: **pré-teste**, com gravação no Firebase (projeto `crivo-pesquisa`).
 
 - Identificação, caracterização do avaliador (níveis de expertise de Benner) e aceite do TCLE.
+- Treinamento autoinstrucional opcional (o avaliador pode pular): quatro módulos curtos com testes rápidos
+  (`js/treino.js`) e um caso guiado com gabarito comentado item a item (caso com `treino: true` e campo
+  `gabarito` no `casos.json`). O tempo de cada módulo e do caso guiado é registrado.
 - Dois casos clínicos fictícios, com o plano sugerido pela IA ao lado do instrumento.
 - As cinco partes do CRIVO-PE; NOC e NIC apenas nos três diagnósticos prioritários.
 - Tempo ativo por caso e por parte, com pausa automática quando a página sai de foco.

@@ -18,4 +18,20 @@ window.CRIVO_CASOS = [
       { id: 'd4', prioridade: 4, titulo: 'Diagnóstico de exemplo D', categoria: 'Potencial para deteriorar', justificativa: 'Justificativa escrita pela IA.', evidencias: ['Fator de risco 2'] },
     ],
   },
+  {
+    id: 'treino',
+    treino: true,
+    titulo: 'Caso guiado',
+    subtitulo: 'Exemplo de caso de treino',
+    resumo: 'Resumo clínico fictício do caso de treino.',
+    diagnosticos: [
+      { id: 'd1', prioridade: 1, titulo: 'Diagnóstico de exemplo A', categoria: 'Com foco no problema', justificativa: 'Justificativa escrita pela IA.', evidencias: ['Evidência 1'],
+        noc: ['Resultado de exemplo 1'], nic: ['Intervenção de exemplo 1'] },
+    ],
+    // Gabarito: ok = respostas esperadas; c = comentário mostrado após concluir o caso.
+    gabarito: {
+      'p1.d1.eade': { ok: ['alta'], c: 'Comentário do gabarito.' },
+      'p1.d1.ev0': { ok: ['sim'], c: 'Comentário do gabarito.' },
+    },
+  },
 ];

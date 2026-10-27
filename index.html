@@ -167,6 +167,22 @@ table.resumo-t { border-collapse: collapse; width: 100%; font-variant-numeric: t
 .resumo-t th { font-size: .8rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
 .tabela-rolagem { overflow-x: auto; }
 .rodape { color: var(--muted); font-size: .8rem; padding-block: 0 32px; }
+
+/* Treinamento */
+.modulos { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.modulos li { display: flex; gap: 12px; align-items: center; justify-content: space-between; flex-wrap: wrap; border: 1px solid var(--line); border-radius: 8px; padding: 10px 14px; background: var(--surface); }
+.modulos .nm { display: flex; gap: 10px; align-items: baseline; }
+.leitura { max-width: 72ch; display: flex; flex-direction: column; gap: 12px; }
+.leitura ol, .leitura ul { margin: 0; padding-left: 1.3em; display: flex; flex-direction: column; gap: 6px; }
+.leitura h3 { margin-top: 6px; }
+.quiz { border: 1px solid var(--line); border-radius: 8px; padding: 14px; display: flex; flex-direction: column; gap: 10px; background: var(--surface-2); }
+.op input:disabled { cursor: default; }
+.retorno { border-left: 4px solid var(--line); padding: 8px 12px; font-size: .9rem; background: var(--surface); border-radius: 0 8px 8px 0; grid-column: 1 / -1; }
+.retorno.certo { border-left-color: var(--accent); }
+.retorno.errado { border-left-color: var(--warn); }
+.retorno strong { display: block; }
+.revisao { background: var(--accent-soft); border: 1px solid var(--accent); border-radius: 8px; padding: 12px 14px; font-size: .9rem; }
+.faixa-treino { display: flex; gap: 12px; align-items: center; justify-content: space-between; flex-wrap: wrap; }
 </style>
 </head>
 <body>
@@ -188,6 +204,7 @@ table.resumo-t { border-collapse: collapse; width: 100%; font-variant-numeric: t
 <footer class="wrap rodape" id="rodape">Pesquisa de mestrado do PGENF/UFRN. Casos clínicos fictícios.</footer>
 
 <script src="js/nuvem.js"></script>
+<script src="js/treino.js"></script>
 <script>
 window.iniciarCrivo = function (inicial) {
   'use strict';
@@ -203,14 +220,20 @@ window.iniciarCrivo = function (inicial) {
   const ESC_PERT = ['Não pertinente', 'Pouco pertinente', 'Pertinente', 'Totalmente pertinente'];
   const ESC_GRAU = ['Não', 'Pouco', 'Em grande parte', 'Totalmente'];
   const ESC_CLARO = ['Nada claro', 'Pouco claro', 'Claro', 'Muito claro'];
+  const MODULOS = window.CRIVO_MODULOS || [];
+  const CASOS_AV = CASOS.filter((c) => !c.treino);
+  const CASO_TREINO = CASOS.find((c) => c.treino) || null;
 
   // ---------------------------------------------------------------- estado
   function novoEstado() {
-    return { etapa: 'inicio', avaliador: {}, casoAtual: null, parteAtual: 1, respostas: {}, questionario: {} };
+    return { etapa: 'inicio', avaliador: {}, casoAtual: null, parteAtual: 1, respostas: {}, questionario: {}, treino: novoTreino() };
   }
+  // Treinamento: situacao novo | andamento | pulado | concluido; pulou fica registrado mesmo se voltar depois.
+  function novoTreino() { return { situacao: 'novo', pulou: false, mod: 0, vistos: {}, tempos: {}, quiz: {}, inicio: null, fim: null }; }
   const NUVEM = !!(inicial && window.crivoNuvem && window.crivoNuvem.ativo);
   let E = NUVEM ? Object.assign(novoEstado(), inicial.estado || {}) : carregar();
   if (NUVEM && inicial.convite && !E.avaliador.nome) { E.avaliador.nome = inicial.convite.nome || ''; E.avaliador.email = inicial.convite.email || ''; }
+  if (!E.treino) E.treino = novoTreino();
   document.getElementById('rodape').textContent = NUVEM
     ? 'Pesquisa de mestrado do PGENF/UFRN. Casos clínicos fictícios. Suas respostas são salvas automaticamente; você pode fechar e voltar pelo mesmo link.'
     : 'Modo local: as respostas ficam apenas neste navegador. Pesquisa de mestrado do PGENF/UFRN; casos clínicos fictícios.';
@@ -256,17 +279,19 @@ window.iniciarCrivo = function (inicial) {
 
   // ---------------------------------------------------------------- relógio (tempo ativo)
   let ultimo = null, pausado = false, timer = null;
-  function contando() { return E.etapa === 'caso' && !pausado && document.visibilityState === 'visible'; }
+  function emRevisao() { const c = E.etapa === 'caso' && caso(E.casoAtual); return !!(c && c.treino && rc(c.id).concluido); }
+  function contando() { return ((E.etapa === 'caso' && !emRevisao()) || E.etapa === 'modulo') && !pausado && document.visibilityState === 'visible'; }
+  const tempoModulos = () => Object.values(E.treino.tempos).reduce((s, v) => s + v, 0);
   function tick() {
     const agora = Date.now();
     if (contando() && ultimo) {
       const dt = Math.min(agora - ultimo, 5000);
-      const t = rc(E.casoAtual).tempos;
-      t.total += dt; t.partes[E.parteAtual] = (t.partes[E.parteAtual] || 0) + dt;
+      if (E.etapa === 'modulo') E.treino.tempos[E.treino.mod] = (E.treino.tempos[E.treino.mod] || 0) + dt;
+      else { const t = rc(E.casoAtual).tempos; t.total += dt; t.partes[E.parteAtual] = (t.partes[E.parteAtual] || 0) + dt; }
     }
     ultimo = agora;
     const el = document.getElementById('relogio-tempo');
-    if (el) el.textContent = mmss(rc(E.casoAtual).tempos.total);
+    if (el) el.textContent = mmss(E.etapa === 'modulo' ? tempoModulos() : rc(E.casoAtual).tempos.total);
     const pt = document.getElementById('relogio-ponto');
     if (pt) pt.classList.toggle('pausa', !contando());
   }
@@ -281,7 +306,16 @@ window.iniciarCrivo = function (inicial) {
     return `<div class="opcoes" role="radiogroup">${rot.map((t, i) => {
       const v = nums ? String(i + 1) : t.toLowerCase();
       return `<label class="op"><input type="radio" name="${k}" value="${esc(v)}" data-k="${k}" ${r[k] === v ? 'checked' : ''}><span>${nums ? `<b>${i + 1}</b>` : ''}${esc(t)}</span></label>`;
-    }).join('')}</div>`;
+    }).join('')}</div>${retorno(k, rot, nums)}`;
+  }
+  // No caso guiado já concluído, mostra o gabarito comentado abaixo de cada resposta.
+  function retorno(k, rot, nums) {
+    if (!emRevisao()) return '';
+    const g = (caso(E.casoAtual).gabarito || {})[k]; if (!g) return '';
+    const v = rc(E.casoAtual).r[k];
+    const rotulo = (x) => (nums ? `${x} (${rot[+x - 1]})` : (rot.find((t) => t.toLowerCase() === x) || x));
+    const certo = g.ok.includes(v);
+    return `<div class="retorno ${certo ? 'certo' : 'errado'}"><strong>${certo ? '✓ Coincide com o gabarito' : `Gabarito: ${esc(g.ok.map(rotulo).join(' ou '))}`}</strong>${esc(g.c)}</div>`;
   }
   function simNao(k) { return escala(k, ['Sim', 'Não'], false); }
   function item(k, cod, pergunta, controle, extra) {
@@ -303,7 +337,7 @@ window.iniciarCrivo = function (inicial) {
         <div class="pilha" style="gap:8px">
           <p class="rotulo">Pré-teste do instrumento</p>
           <h1>Bem-vinda, bem-vindo ao pré-teste do CRIVO-PE</h1>
-          <p class="muted">Você vai aplicar o instrumento a dois casos clínicos fictícios, cada um com um plano de enfermagem sugerido por inteligência artificial. O sistema registra o tempo ativo de cada caso e de cada parte; o relógio pausa sozinho quando você sai da página. Ao final, há um breve questionário sobre a clareza do instrumento.</p>
+          <p class="muted">Primeiro, um treinamento curto e opcional sobre como aplicar o instrumento. Depois, você vai aplicá-lo a dois casos clínicos fictícios, cada um com um plano de enfermagem sugerido por inteligência artificial. O sistema registra o tempo ativo de cada caso e de cada parte; o relógio pausa sozinho quando você sai da página. Ao final, há um breve questionário sobre a clareza do instrumento.</p>
         </div>
         <section class="painel pilha" aria-labelledby="t-id">
           <h2 id="t-id">Identificação</h2>
@@ -330,7 +364,7 @@ window.iniciarCrivo = function (inicial) {
           <h2 id="t-tcle">Termo de Consentimento Livre e Esclarecido</h2>
           <div class="tcle" tabindex="0">
             <p><strong>[Texto do TCLE aprovado pelo CEP]</strong></p>
-            <p>Você está sendo convidado a participar do pré-teste do instrumento CRIVO-PE, parte da pesquisa de mestrado "Processo de Enfermagem mediado por inteligência artificial em UTI oncológica adulta". A participação é voluntária, leva cerca de uma hora e pode ser interrompida a qualquer momento, sem prejuízo. Os casos são fictícios. Suas respostas serão analisadas sem identificação.</p>
+            <p>Você está sendo convidado a participar do pré-teste do instrumento CRIVO-PE, parte da pesquisa de mestrado "Processo de Enfermagem mediado por inteligência artificial em UTI oncológica adulta". A participação é voluntária, leva cerca de uma hora, mais o treinamento opcional, e pode ser interrompida a qualquer momento, sem prejuízo. Os casos são fictícios. Suas respostas serão analisadas sem identificação.</p>
           </div>
           <label class="check"><input type="checkbox" id="av-tcle" data-a="tcle" ${a.tcle ? 'checked' : ''}><span>Li o termo e concordo em participar.</span></label>
         </section>
@@ -339,13 +373,79 @@ window.iniciarCrivo = function (inicial) {
   }
   function podeComecar() { const a = E.avaliador; return !!(a.nome && a.titulacao && a.tcle); }
 
+  // ---------------------------------------------------------------- treinamento
+  const T = () => E.treino;
+  const minutosTreino = () => MODULOS.reduce((s, m) => s + (m.minutos || 0), 0) + (CASO_TREINO ? 15 : 0);
+  const situacaoTreino = () => ({ novo: ['', 'Não iniciado'], andamento: ['and', 'Em andamento'], pulado: ['', 'Pulado'], concluido: ['ok', 'Concluído'] }[T().situacao]);
+  function telaTreino() {
+    const t = T(); const g = CASO_TREINO ? rc(CASO_TREINO.id) : null;
+    const acabou = t.situacao === 'concluido';
+    app.innerHTML = `
+      <div class="pilha" style="max-width:820px">
+        <div class="pilha" style="gap:8px"><p class="rotulo">Treinamento</p><h1>Antes de avaliar</h1>
+          <p class="muted">${MODULOS.length} módulos curtos${CASO_TREINO ? ' e um caso guiado, com gabarito comentado ao final' : ''}. Leva cerca de ${minutosTreino()} minutos, e o tempo é registrado. Se você já conhece o CRIVO-PE e a EADE-2, pode pular; o treinamento continua disponível na tela dos casos.</p></div>
+        <section class="painel pilha">
+          <ol class="modulos">
+            ${MODULOS.map((m, i) => `<li><span class="nm"><span class="cod">${i + 1}</span><span>${esc(m.titulo)} <span class="muted peq">· cerca de ${m.minutos} min</span></span></span>
+              <span class="linha"><span class="pill ${t.vistos[i] ? 'ok' : ''}">${t.vistos[i] ? 'Lido' : 'Não lido'}</span><button class="btn" data-modulo="${i}">${t.vistos[i] ? 'Rever' : 'Abrir'}</button></span></li>`).join('')}
+            ${CASO_TREINO ? `<li><span class="nm"><span class="cod">${MODULOS.length + 1}</span><span>Caso guiado <span class="muted peq">· cerca de 15 min</span></span></span>
+              <span class="linha"><span class="pill ${g.concluido ? 'ok' : g.inicio ? 'and' : ''}">${g.concluido ? 'Concluído' : g.inicio ? 'Em andamento' : 'Não iniciado'}</span><button class="btn" data-abrir="${CASO_TREINO.id}">${g.concluido ? 'Ver gabarito' : g.inicio ? 'Continuar' : 'Abrir'}</button></span></li>` : ''}
+          </ol>
+        </section>
+        <div class="linha">
+          ${acabou ? '<button class="btn btn-pri" id="btn-ir-casos">Ir para os casos</button>'
+            : `<button class="btn btn-pri" data-modulo="${proximoModulo()}">${t.situacao === 'novo' || t.situacao === 'pulado' ? 'Começar o treinamento' : 'Continuar o treinamento'}</button>
+               <button class="btn" id="btn-pular">${t.situacao === 'pulado' ? 'Voltar aos casos' : 'Pular o treinamento'}</button>`}
+        </div>
+        <p class="aviso" id="conf-pular" hidden>Tem certeza? O treinamento explica as regras de decisão de cada item. <button class="btn-link" id="btn-pular-sim">Pular e ir para os casos</button></p>
+      </div>`;
+  }
+  function proximoModulo() { const i = MODULOS.findIndex((_, j) => !T().vistos[j]); return i < 0 ? 0 : i; }
+
+  function telaModulo() {
+    const t = T(); const i = t.mod; const m = MODULOS[i];
+    const ultimo = i === MODULOS.length - 1;
+    app.innerHTML = `
+      <div class="pilha" style="max-width:860px">
+        <div class="linha" style="justify-content:space-between">
+          <button class="btn-link" id="btn-sumario">← Treinamento</button>
+          <div class="relogio" aria-label="Tempo no treinamento"><span class="ponto" id="relogio-ponto"></span><span class="tempo" id="relogio-tempo">${mmss(tempoModulos())}</span></div>
+        </div>
+        <div class="pilha" style="gap:6px"><p class="rotulo">Módulo ${i + 1} de ${MODULOS.length}</p><h1>${esc(m.titulo)}</h1></div>
+        <section class="painel leitura">${m.html}</section>
+        ${m.quiz.length ? `<section class="painel pilha"><h2>Teste rápido</h2><p class="muted peq">Não conta para a pesquisa como avaliação; serve para fixar as regras.</p>
+          ${m.quiz.map((q) => { const v = t.quiz[q.k]; const resp = v != null;
+            return `<div class="quiz"><p class="perg" style="font-weight:600">${esc(q.perg)}</p>
+              <div class="opcoes">${q.ops.map((o, j) => `<label class="op"><input type="radio" name="${q.k}" data-quiz="${q.k}" value="${j}" ${String(v) === String(j) ? 'checked' : ''} ${resp ? 'disabled' : ''}><span>${esc(o)}</span></label>`).join('')}</div>
+              ${resp ? `<div class="retorno ${+v === q.certo ? 'certo' : 'errado'}"><strong>${+v === q.certo ? '✓ Correto' : 'Resposta esperada: ' + esc(q.ops[q.certo])}</strong>${esc(q.exp)}</div>` : ''}
+            </div>`; }).join('')}
+        </section>` : ''}
+        <div class="linha" style="justify-content:space-between">
+          ${i > 0 ? '<button class="btn" id="btn-mod-ant">Módulo anterior</button>' : '<span></span>'}
+          ${ultimo ? (CASO_TREINO ? `<button class="btn btn-pri" data-abrir="${CASO_TREINO.id}">Ir para o caso guiado</button>` : '<button class="btn btn-pri" id="btn-treino-fim">Concluir o treinamento</button>')
+            : '<button class="btn btn-pri" id="btn-mod-prox">Próximo módulo</button>'}
+        </div>
+      </div>`;
+    iniciarRelogio();
+  }
+  function abrirModulo(i) {
+    const t = T(); tick();
+    if (t.situacao !== 'concluido') t.situacao = 'andamento';
+    if (!t.inicio) t.inicio = new Date().toISOString();
+    t.mod = i; t.vistos[i] = true; pausado = false; ir('modulo');
+  }
+  function concluirTreino() { const t = T(); t.situacao = 'concluido'; t.fim = new Date().toISOString(); ir('casos'); }
+
   function telaCasos() {
-    const todos = CASOS.every((c) => rc(c.id).concluido);
+    const todos = CASOS_AV.every((c) => rc(c.id).concluido);
+    const st = situacaoTreino();
     app.innerHTML = `
       <div class="pilha">
         <div class="pilha" style="gap:6px"><p class="rotulo">Casos do pré-teste</p><h1>Escolha um caso para avaliar</h1>
-          <p class="muted">Você pode interromper e voltar depois: as respostas e o tempo ficam salvos neste navegador.</p></div>
-        <div class="casos">${CASOS.map((c) => {
+          <p class="muted">Você pode interromper e voltar depois: as respostas e o tempo ficam salvos${NUVEM ? '' : ' neste navegador'}.</p></div>
+        ${MODULOS.length ? `<section class="painel faixa-treino"><span><strong>Treinamento</strong> <span class="pill ${st[0]}">${st[1]}</span></span>
+          <button class="btn" id="btn-treino">${T().situacao === 'concluido' ? 'Rever o treinamento' : 'Abrir o treinamento'}</button></section>` : ''}
+        <div class="casos">${CASOS_AV.map((c) => {
           const x = rc(c.id); const st = x.concluido ? ['ok', 'Concluído'] : x.inicio ? ['and', 'Em andamento'] : ['', 'Não iniciado'];
           return `<article class="painel caso-card">
             <span class="pill status ${st[0]}">${st[1]}</span>
@@ -425,18 +525,20 @@ window.iniciarCrivo = function (inicial) {
   function telaCaso() {
     const c = caso(E.casoAtual); const x = rc(c.id); const n = E.parteAtual;
     if (!x.inicio) x.inicio = new Date().toISOString();
-    const pend = pendentes(c, n);
+    const pend = pendentes(c, n); const rev = emRevisao();
     app.innerHTML = `
       <div class="pilha">
         <div class="linha" style="justify-content:space-between">
-          <button class="btn-link" id="btn-voltar">← Casos</button>
+          <button class="btn-link" id="${c.treino ? 'btn-sumario' : 'btn-voltar'}">← ${c.treino ? 'Treinamento' : 'Casos'}</button>
           <div class="relogio" aria-label="Tempo ativo neste caso"><span class="ponto" id="relogio-ponto"></span><span class="tempo" id="relogio-tempo">${mmss(x.tempos.total)}</span>
             <button class="btn" id="btn-pausa" style="padding:5px 12px">${pausado ? 'Retomar' : 'Pausar'}</button></div>
         </div>
         <div class="caso-layout">
           ${painelCaso(c)}
           <section class="pilha" aria-labelledby="t-inst">
-            <h2 id="t-inst" class="rotulo" style="font-family:var(--font-body)">Instrumento CRIVO-PE</h2>
+            <h2 id="t-inst" class="rotulo" style="font-family:var(--font-body)">Instrumento CRIVO-PE${c.treino ? ' · caso guiado' : ''}</h2>
+            ${rev ? '<div class="revisao"><strong>Gabarito comentado.</strong> Abaixo de cada resposta está a resposta esperada e o porquê. Percorra as cinco partes; o relógio está parado. Você pode mudar as respostas para comparar, mas o que conta é a primeira versão, já registrada.</div>'
+              : c.treino ? '<div class="revisao">Avalie este caso como se fosse real. Ao concluir, você verá o gabarito comentado item a item.</div>' : ''}
             <nav class="passos" aria-label="Partes do instrumento">${PARTES.map((p) => {
               const pp = pendentes(c, p.n);
               return `<button class="passo ${pp ? '' : 'ok'}" data-parte="${p.n}" ${p.n === n ? 'aria-current="step"' : ''}>${p.n}. ${p.nome}<span class="n">${pp ? pp + ' pend.' : '✓'}</span></button>`;
@@ -446,7 +548,7 @@ window.iniciarCrivo = function (inicial) {
                 <span class="${pend ? 'aviso' : 'muted peq'}">${pend ? `${pend} resposta(s) pendente(s) nesta parte` : 'Parte completa'} · tempo nesta parte: <span class="tempo">${mmss(x.tempos.partes[n])}</span></span>
                 <div class="linha">
                   ${n > 1 ? '<button class="btn" id="btn-ant">Parte anterior</button>' : ''}
-                  ${n < 5 ? '<button class="btn btn-pri" id="btn-prox">Próxima parte</button>' : `<button class="btn btn-pri" id="btn-concluir">Concluir caso</button>`}
+                  ${n < 5 ? '<button class="btn btn-pri" id="btn-prox">Próxima parte</button>' : rev ? `<button class="btn btn-pri" id="btn-treino-fim">${T().situacao === 'concluido' ? 'Ir para os casos' : 'Concluir o treinamento e ir para os casos'}</button>` : `<button class="btn btn-pri" id="btn-concluir">${c.treino ? 'Concluir e ver o gabarito' : 'Concluir caso'}</button>`}
                 </div>
               </div>
             </div>
@@ -467,6 +569,14 @@ window.iniciarCrivo = function (inicial) {
           <div class="campo"><span class="leg">As instruções e os itens desta parte ficaram claros?</span>${linha('claro' + p.n, ESC_CLARO)}</div>
           <div class="campo"><label for="q-duv${p.n}">Itens com dúvida e sugestões de redação</label><textarea id="q-duv${p.n}" data-q="duv${p.n}">${esc(q['duv' + p.n] || '')}</textarea></div>
         </section>`).join('')}
+        ${MODULOS.length ? `<section class="painel pilha"><h2>Treinamento</h2>
+          ${T().situacao === 'concluido' || T().situacao === 'andamento' ? `
+          <div class="campo"><span class="leg">O treinamento preparou você para aplicar o instrumento?</span>${linha('tr_prep', ESC_GRAU)}</div>
+          <div class="campo"><span class="leg">Os módulos foram claros?</span>${linha('tr_claro', ESC_CLARO)}</div>
+          ${CASO_TREINO ? `<div class="campo"><span class="leg">O caso guiado com gabarito ajudou?</span>${linha('tr_guiado', ESC_GRAU)}</div>` : ''}
+          <div class="campo"><label for="q-tr_sug">O que faltou ou sobrou no treinamento?</label><textarea id="q-tr_sug" data-q="tr_sug">${esc(q.tr_sug || '')}</textarea></div>`
+          : `<div class="campo"><label for="q-tr_motivo">Você pulou o treinamento. Por quê? (opcional)</label><textarea id="q-tr_motivo" data-q="tr_motivo">${esc(q.tr_motivo || '')}</textarea></div>`}
+        </section>` : ''}
         <section class="painel pilha"><h2>Visão geral</h2>
           <div class="campo"><span class="leg">O tempo de aplicação por caso foi adequado?</span>${linha('tempo', ['Muito longo', 'Longo', 'Adequado', 'Curto'])}</div>
           <div class="campo"><label for="q-geral">Comentários gerais</label><textarea id="q-geral" data-q="geral">${esc(q.geral || '')}</textarea></div>
@@ -476,14 +586,16 @@ window.iniciarCrivo = function (inicial) {
   }
 
   function telaFim() {
-    const dados = { instrumento: 'CRIVO-PE', versao: 'pré-teste 0.1', avaliador: E.avaliador, respostas: E.respostas, questionario: E.questionario, exportadoEm: new Date().toISOString() };
+    const dados = { instrumento: 'CRIVO-PE', versao: 'pré-teste 0.2', avaliador: E.avaliador, treino: E.treino, respostas: E.respostas, questionario: E.questionario, exportadoEm: new Date().toISOString() };
+    const g = CASO_TREINO ? rc(CASO_TREINO.id).tempos.total : 0;
     app.innerHTML = `
       <div class="pilha" style="max-width:900px">
         <div class="pilha" style="gap:6px"><p class="rotulo">Pré-teste concluído</p><h1>Obrigado pela participação</h1>
           <p class="muted">Tempos ativos registrados, por caso e por parte (minutos:segundos).</p></div>
         <div class="painel tabela-rolagem"><table class="resumo-t"><thead><tr><th>Caso</th>${PARTES.map((p) => `<th>Parte ${p.n}</th>`).join('')}<th>Total</th></tr></thead><tbody>
-          ${CASOS.map((c) => { const t = rc(c.id).tempos; return `<tr><td>${esc(c.titulo)}</td>${PARTES.map((p) => `<td>${mmss(t.partes[p.n])}</td>`).join('')}<td><strong>${mmss(t.total)}</strong></td></tr>`; }).join('')}
+          ${CASOS_AV.map((c) => { const t = rc(c.id).tempos; return `<tr><td>${esc(c.titulo)}</td>${PARTES.map((p) => `<td>${mmss(t.partes[p.n])}</td>`).join('')}<td><strong>${mmss(t.total)}</strong></td></tr>`; }).join('')}
         </tbody></table></div>
+        ${MODULOS.length ? `<p class="muted peq">Treinamento: ${T().pulou && !tempoModulos() && !g ? 'pulado' : `módulos <span class="tempo">${mmss(tempoModulos())}</span>${CASO_TREINO ? ` · caso guiado <span class="tempo">${mmss(g)}</span>` : ''}`}.</p>` : ''}
         ${NUVEM ? '<section class="painel"><p>Suas respostas e os tempos já foram enviados ao pesquisador. Você pode fechar esta página.</p></section>' : `<section class="painel pilha"><h2>Dados do modo local</h2>
           <p class="muted peq">Na versão final, as respostas vão direto para a base da pesquisa. Neste protótipo, copie os dados e envie ao pesquisador.</p>
           <textarea id="dados-json" readonly style="min-height:180px;font-family:ui-monospace,Consolas,monospace;font-size:.8rem">${esc(JSON.stringify(dados, null, 2))}</textarea>
@@ -498,6 +610,8 @@ window.iniciarCrivo = function (inicial) {
     E.mostrarPend = !!E.mostrarPend;
     if (E.etapa === 'inicio') telaInicio();
     else if (E.etapa === 'casos') telaCasos();
+    else if (E.etapa === 'treino') telaTreino();
+    else if (E.etapa === 'modulo') telaModulo();
     else if (E.etapa === 'caso') telaCaso();
     else if (E.etapa === 'questionario') telaQuestionario();
     else telaFim();
@@ -515,6 +629,10 @@ window.iniciarCrivo = function (inicial) {
   });
   app.addEventListener('change', (ev) => {
     const t = ev.target;
+    if (t.dataset.quiz) {
+      if (T().quiz[t.dataset.quiz] == null) T().quiz[t.dataset.quiz] = +t.value;
+      tick(); const y = window.scrollY; render(); window.scrollTo(0, y); return;
+    }
     if (t.dataset.k && t.type === 'radio') {
       rc(E.casoAtual).r[t.dataset.k] = t.value; salvar();
       const precisaRedesenhar = /p4\..+\.42$|p5\.5[34]$/.test(t.dataset.k);
@@ -530,7 +648,15 @@ window.iniciarCrivo = function (inicial) {
   }
   app.addEventListener('click', (ev) => {
     const b = ev.target.closest('button'); if (!b) return;
-    if (b.id === 'btn-comecar') { if (podeComecar()) ir('casos'); }
+    if (b.id === 'btn-comecar') { if (podeComecar()) ir(MODULOS.length && T().situacao === 'novo' ? 'treino' : 'casos'); }
+    else if (b.dataset.modulo != null) abrirModulo(+b.dataset.modulo);
+    else if (b.id === 'btn-mod-ant') abrirModulo(T().mod - 1);
+    else if (b.id === 'btn-mod-prox') abrirModulo(T().mod + 1);
+    else if (b.id === 'btn-sumario' || b.id === 'btn-treino') ir('treino');
+    else if (b.id === 'btn-ir-casos') ir('casos');
+    else if (b.id === 'btn-pular') { if (T().situacao === 'pulado') ir('casos'); else document.getElementById('conf-pular').hidden = false; }
+    else if (b.id === 'btn-pular-sim') { T().situacao = 'pulado'; T().pulou = true; ir('casos'); }
+    else if (b.id === 'btn-treino-fim') { if (T().situacao === 'concluido') ir('casos'); else concluirTreino(); }
     else if (b.dataset.abrir) { E.casoAtual = b.dataset.abrir; E.parteAtual = 1; pausado = false; ir('caso'); }
     else if (b.id === 'btn-voltar') ir('casos');
     else if (b.dataset.parte) { tick(); E.parteAtual = +b.dataset.parte; E.mostrarPend = false; render(); window.scrollTo(0, 0); }
@@ -540,7 +666,9 @@ window.iniciarCrivo = function (inicial) {
     else if (b.id === 'btn-concluir') {
       const c = caso(E.casoAtual); const total = totalPendentes(c);
       if (total) { E.mostrarPend = true; const p = PARTES.find((pp) => pendentes(c, pp.n)); tick(); E.parteAtual = p.n; render(); window.scrollTo(0, 0); return; }
-      tick(); const x = rc(c.id); x.concluido = true; x.fim = new Date().toISOString(); ir('casos');
+      tick(); const x = rc(c.id); x.concluido = true; x.fim = new Date().toISOString();
+      if (c.treino) { x.primeira = Object.assign({}, x.r); E.parteAtual = 1; E.mostrarPend = false; render(); window.scrollTo(0, 0); return; }
+      ir('casos');
     }
     else if (b.id === 'btn-quest') ir('questionario');
     else if (b.id === 'btn-finalizar') ir('fim');
@@ -555,6 +683,7 @@ window.iniciarCrivo = function (inicial) {
   });
 
   if (E.etapa === 'caso' && !caso(E.casoAtual)) E.etapa = 'casos';
+  if (E.etapa === 'modulo' && !MODULOS[E.treino.mod]) E.etapa = 'treino';
   render();
 };
 // Casos: casos.js (reais, fora do repositório público); se não existir, os de exemplo.
