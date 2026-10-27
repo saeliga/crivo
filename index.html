@@ -146,7 +146,6 @@ textarea { min-height: 70px; resize: vertical; }
 .item { display: flex; flex-direction: column; gap: 8px; padding-top: 10px; border-top: 1px dashed var(--line); }
 .item:first-of-type { border-top: 0; padding-top: 0; }
 .item .perg { font-weight: 600; }
-.item .perg .cod { color: var(--muted); font-variant-numeric: tabular-nums; margin-right: 6px; font-weight: 500; }
 .item.pend .perg::after { content: " · pendente"; color: var(--warn); font-weight: 500; font-size: .85rem; }
 .opcoes { display: flex; flex-wrap: wrap; gap: 6px; }
 .op { position: relative; }
@@ -155,8 +154,11 @@ textarea { min-height: 70px; resize: vertical; }
 .op span b { font-size: 1rem; }
 .op input:checked + span { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
 .op input:focus-visible + span { outline: 3px solid var(--gold); outline-offset: 2px; }
-.subitem { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px 12px; align-items: center; }
-@media (max-width: 560px) { .subitem { grid-template-columns: 1fr; } }
+.subitem { display: flex; flex-direction: column; gap: 8px; padding-block: 4px; }
+.subitem > .peq { font-size: .92rem; }
+.subitem.ev { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px 16px; align-items: center; padding-block: 2px; }
+@media (max-width: 560px) { .subitem.ev { grid-template-columns: 1fr; } }
+.cod { color: var(--muted); font-variant-numeric: tabular-nums; margin-right: 8px; font-weight: 500; }
 .rodape-parte { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; align-items: center; }
 .aviso { color: var(--warn); font-weight: 600; font-size: .9rem; }
 
@@ -380,7 +382,7 @@ window.iniciarCrivo = function (inicial) {
       ${c.diagnosticos.map((d) => `<div class="bloco"><h3><span class="prio ${d.prioridade > 3 ? 'fora' : ''}">${d.prioridade}</span>${esc(d.titulo)}</h3>
         ${item(`p1.${d.id}.eade`, '1.1', 'Acurácia do diagnóstico (EADE-2)', escala(`p1.${d.id}.eade`, ['Alta', 'Moderada', 'Baixa', 'Nula'], false))}
         ${item(d.evidencias.map((_, i) => `p1.${d.id}.ev${i}`), '1.2', 'Cada evidência indicada pela IA está sustentada pelos dados do caso?',
-          d.evidencias.map((e, i) => `<div class="subitem"><span>${esc(e)}</span>${simNao(`p1.${d.id}.ev${i}`)}</div>`).join(''))}
+          d.evidencias.map((e, i) => `<div class="subitem ev"><span>${esc(e)}</span>${simNao(`p1.${d.id}.ev${i}`)}</div>`).join(''))}
       </div>`).join('')}`;
     if (n === 2) return `
       <div class="instrucao"><strong>Parte 2.</strong> Apenas para os três diagnósticos prioritários. Julgue cada resultado (NOC) de 1 a 4.</div>
