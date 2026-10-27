@@ -98,7 +98,7 @@ function tela() {
       ${convites.map((c) => { const s = situacao(c.codigo); return `<tr><td>${esc(c.nome)}</td><td>${esc(c.email)}</td><td>${esc(c.papel)}</td>
         <td><span class="pill ${s[0]}">${s[1]}</span></td><td>${mmss(tempoTotal(c.codigo))}</td>
         <td><code>${esc(linkDo(c.codigo))}</code> <button class="btn-link" data-copiar="${c.codigo}">copiar</button></td>
-        <td><button class="btn-link" data-remover="${c.codigo}">remover</button></td></tr>`; }).join('') || '<tr><td colspan="7" class="muted">Nenhum convite ainda.</td></tr>'}
+        <td>${respostas[c.codigo] ? `<button class="btn-link" data-zerar="${c.codigo}">zerar respostas</button> · ` : ''}<button class="btn-link" data-remover="${c.codigo}">remover</button></td></tr>`; }).join('') || '<tr><td colspan="7" class="muted">Nenhum convite ainda.</td></tr>'}
       </tbody></table></div>
       <p class="aviso" id="conf" hidden></p>
     </section>
@@ -162,6 +162,8 @@ el.addEventListener('click', async (ev) => {
   if (b.id === 'sair') { await A.signOut(auth); location.reload(); }
   else if (b.dataset.copiar) { const t = linkDo(b.dataset.copiar); try { await navigator.clipboard.writeText(t); b.textContent = 'copiado'; } catch (e) { b.textContent = 'copie ao lado'; } }
   else if (b.dataset.remover) { const p = document.getElementById('conf'); p.hidden = false; p.innerHTML = `Remover o convite e as respostas de ${esc(convites.find((c) => c.codigo === b.dataset.remover)?.nome)}? <button class="btn-link" data-confirmar="${b.dataset.remover}">Remover</button>`; }
+  else if (b.dataset.zerar) { const p = document.getElementById('conf'); p.hidden = false; p.innerHTML = `Apagar as respostas e os tempos de ${esc(convites.find((c) => c.codigo === b.dataset.zerar)?.nome)}? O link continua valendo e a pessoa recomeça do zero. Feche antes a aba do site aberta com esse link. <button class="btn-link" data-confirmar-zerar="${b.dataset.zerar}">Apagar respostas</button>`; }
+  else if (b.dataset.confirmarZerar) { await F.deleteDoc(F.doc(db, 'respostas', b.dataset.confirmarZerar)); await carregar(); tela(); }
   else if (b.dataset.confirmar) { await F.deleteDoc(F.doc(db, 'respostas', b.dataset.confirmar)); await F.deleteDoc(F.doc(db, 'convidados', b.dataset.confirmar)); await carregar(); tela(); }
   else if (b.id === 'exp-json') exportar('json');
   else if (b.id === 'exp-itens') exportar('itens');
