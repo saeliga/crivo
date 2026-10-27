@@ -1,0 +1,48 @@
+rules_version = '2';
+// Regras da base da pesquisa (projeto crivo-pesquisa).
+// - Avaliadores entram por link individual (?c=CÓDIGO), com login anônimo.
+// - Quem tem o código pode vinculá-lo à própria sessão; o código é a credencial.
+// - Cada avaliador lê e grava só as próprias respostas; casos só para quem tem acesso.
+// - Só o pesquisador (conta Google verificada abaixo) cria convites, carrega casos e exporta.
+service cloud.firestore {
+  match /databases/{db}/documents {
+    function admin() {
+      return request.auth != null
+        && request.auth.token.email == 'tercio.neto@liga.org.br'
+        && request.auth.token.email_verified == true;
+    }
+    function logado() { return request.auth != null; }
+    function convite(codigo) { return get(/databases/$(db)/documents/convidados/$(codigo)); }
+    function dono(codigo) { return logado() && convite(codigo).data.uid == request.auth.uid; }
+
+    match /convidados/{codigo} {
+      allow get: if logado();
+      allow list, create, delete: if admin();
+      allow update: if admin()
+        || (logado()
+            && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['uid'])
+            && request.resource.data.uid == request.auth.uid);
+    }
+
+    match /acessos/{uid} {
+      allow read: if (logado() && request.auth.uid == uid) || admin();
+      allow create, update: if logado() && request.auth.uid == uid
+        && request.resource.data.keys().hasOnly(['codigo', 'em'])
+        && getAfter(/databases/$(db)/documents/convidados/$(request.resource.data.codigo)).data.uid == uid;
+      allow delete: if admin();
+    }
+
+    match /casos/{id} {
+      allow read: if admin() || (logado() && exists(/databases/$(db)/documents/acessos/$(request.auth.uid)));
+      allow write: if admin();
+    }
+
+    match /respostas/{codigo} {
+      allow read: if dono(codigo) || admin();
+      allow create, update: if dono(codigo)
+        && request.resource.data.keys().hasOnly(['codigo', 'estado', 'atualizadoEm'])
+        && request.resource.data.codigo == codigo;
+      allow delete: if admin();
+    }
+  }
+}

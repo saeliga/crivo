@@ -1,0 +1,174 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CRIVO-PE Administração</title>
+<meta name="robots" content="noindex">
+<style>
+:root { --bg: #f4f6f2; --surface: #ffffff; --surface-2: #eaf0e8; --fg: #17241c; --muted: #56645b; --line: #d3ddd2; --accent: #0d6b3f; --accent-fg: #ffffff; --warn: #9a4b00; --gold-soft: #fff4cc; --gold: #e4b400; --accent-soft: #dcefe2; }
+@media (prefers-color-scheme: dark) { :root { --bg: #111814; --surface: #18221c; --surface-2: #1f2c24; --fg: #e5ede7; --muted: #a2b2a8; --line: #2e3d34; --accent: #4fbf86; --accent-fg: #0b1a12; --warn: #f0a560; --gold-soft: #3a3115; --gold: #f2c94c; --accent-soft: #1d3a2a; color-scheme: dark; } }
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--bg); color: var(--fg); font: 15px/1.5 "Segoe UI", Arial, sans-serif; }
+.wrap { max-width: 1200px; margin: 0 auto; padding: 20px 16px 48px; display: flex; flex-direction: column; gap: 16px; }
+h1 { font-size: 1.5rem; margin: 0; } h2 { font-size: 1.15rem; margin: 0; }
+.painel { background: var(--surface); border: 1px solid var(--line); border-radius: 10px; padding: 18px; display: flex; flex-direction: column; gap: 12px; }
+.linha { display: flex; gap: 10px; flex-wrap: wrap; align-items: end; }
+.campo { display: flex; flex-direction: column; gap: 4px; }
+input, select { font: inherit; color: inherit; border: 1px solid var(--line); background: var(--bg); border-radius: 8px; padding: 8px 10px; }
+.btn { font: inherit; border: 1px solid var(--line); background: var(--surface); color: var(--fg); padding: 8px 14px; border-radius: 8px; cursor: pointer; font-weight: 600; }
+.btn-pri { background: var(--accent); color: var(--accent-fg); border-color: var(--accent); }
+.btn-link { border: 0; background: none; color: var(--accent); text-decoration: underline; cursor: pointer; padding: 0; font: inherit; }
+.muted { color: var(--muted); } .peq { font-size: .85rem; } .aviso { color: var(--warn); font-weight: 600; }
+.rolagem { overflow-x: auto; }
+table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; }
+th, td { text-align: left; padding: 7px 9px; border-bottom: 1px solid var(--line); vertical-align: top; }
+th { font-size: .78rem; text-transform: uppercase; letter-spacing: .06em; color: var(--muted); }
+.pill { font-size: .78rem; padding: 2px 8px; border-radius: 999px; background: var(--surface-2); }
+.pill.ok { background: var(--accent-soft); color: var(--accent); }
+code { font-size: .85rem; }
+:focus-visible { outline: 3px solid var(--gold); outline-offset: 2px; }
+</style>
+</head>
+<body>
+<main class="wrap" id="app"><p class="muted">Carregando…</p></main>
+<script type="module">
+const CONFIG = {
+  apiKey: 'AIzaSyDmoWbLH7zAP9btC6OZTjn0B6ToY2yZjT4', authDomain: 'crivo-pesquisa.firebaseapp.com', projectId: 'crivo-pesquisa',
+  storageBucket: 'crivo-pesquisa.firebasestorage.app', messagingSenderId: '630175893564', appId: '1:630175893564:web:6283d01c589e3b7ba65b39',
+};
+const ADMIN = 'tercio.neto@liga.org.br';
+const B = 'https://www.gstatic.com/firebasejs/10.14.1/';
+const { initializeApp } = await import(B + 'firebase-app.js');
+const A = await import(B + 'firebase-auth.js');
+const F = await import(B + 'firebase-firestore.js');
+const app = initializeApp(CONFIG);
+const auth = A.getAuth(app);
+const db = F.getFirestore(app);
+const el = document.getElementById('app');
+const esc = (s) => String(s == null ? '' : s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const mmss = (ms) => { const s = Math.floor((ms || 0) / 1000); return String(Math.floor(s / 60)).padStart(2, '0') + ':' + String(s % 60).padStart(2, '0'); };
+const linkDo = (codigo) => new URL('./?c=' + codigo, location.href).href;
+function novoCodigo() {
+  const alf = 'abcdefghjkmnpqrstuvwxyz23456789';
+  return Array.from(crypto.getRandomValues(new Uint8Array(12)), (b) => alf[b % alf.length]).join('');
+}
+function baixar(nome, texto, tipo) {
+  const url = URL.createObjectURL(new Blob([texto], { type: tipo }));
+  const a = Object.assign(document.createElement('a'), { href: url, download: nome });
+  document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+const csv = (linhas) => linhas.map((l) => l.map((v) => { const t = String(v == null ? '' : v); return /[";\n]/.test(t) ? '"' + t.replace(/"/g, '""') + '"' : t; }).join(';')).join('\n');
+
+let convites = [], respostas = {}, casos = [];
+
+async function carregar() {
+  convites = (await F.getDocs(F.collection(db, 'convidados'))).docs.map((d) => ({ codigo: d.id, ...d.data() }));
+  convites.sort((a, b) => (a.criadoEm?.seconds || 0) - (b.criadoEm?.seconds || 0));
+  respostas = {}; (await F.getDocs(F.collection(db, 'respostas'))).docs.forEach((d) => { respostas[d.id] = d.data(); });
+  casos = (await F.getDocs(F.query(F.collection(db, 'casos'), F.orderBy('ordem')))).docs.map((d) => d.data());
+}
+
+function situacao(codigo) {
+  const r = respostas[codigo]?.estado; if (!r) return ['', 'Não acessou'];
+  const conc = Object.values(r.respostas || {}).filter((x) => x.concluido).length;
+  if (r.etapa === 'fim') return ['ok', 'Concluiu'];
+  return ['', `${conc} de ${casos.length} casos`];
+}
+const tempoTotal = (codigo) => Object.values(respostas[codigo]?.estado?.respostas || {}).reduce((s, x) => s + (x.tempos?.total || 0), 0);
+
+function tela() {
+  el.innerHTML = `
+    <div class="linha" style="justify-content:space-between;align-items:center"><h1>CRIVO-PE · Administração</h1>
+      <span class="muted peq">${esc(auth.currentUser.email)} · <button class="btn-link" id="sair">Sair</button></span></div>
+    <section class="painel"><h2>Novo convite</h2>
+      <form class="linha" id="f-convite">
+        <div class="campo"><label for="c-nome">Nome</label><input id="c-nome" required></div>
+        <div class="campo"><label for="c-email">E-mail</label><input id="c-email" type="email"></div>
+        <div class="campo"><label for="c-papel">Papel</label><select id="c-papel"><option value="pre-teste">Pré-teste</option><option value="juiz">Juiz (Fase 4)</option></select></div>
+        <button class="btn btn-pri">Criar convite</button>
+      </form>
+      <p class="muted peq">Cada convite gera um link individual. Envie o link ao avaliador: quem tem o link entra, então não o compartilhe.</p>
+    </section>
+    <section class="painel"><h2>Convites (${convites.length})</h2>
+      <div class="rolagem"><table><thead><tr><th>Nome</th><th>E-mail</th><th>Papel</th><th>Situação</th><th>Tempo</th><th>Link individual</th><th></th></tr></thead><tbody>
+      ${convites.map((c) => { const s = situacao(c.codigo); return `<tr><td>${esc(c.nome)}</td><td>${esc(c.email)}</td><td>${esc(c.papel)}</td>
+        <td><span class="pill ${s[0]}">${s[1]}</span></td><td>${mmss(tempoTotal(c.codigo))}</td>
+        <td><code>${esc(linkDo(c.codigo))}</code> <button class="btn-link" data-copiar="${c.codigo}">copiar</button></td>
+        <td><button class="btn-link" data-remover="${c.codigo}">remover</button></td></tr>`; }).join('') || '<tr><td colspan="7" class="muted">Nenhum convite ainda.</td></tr>'}
+      </tbody></table></div>
+      <p class="aviso" id="conf" hidden></p>
+    </section>
+    <section class="painel"><h2>Casos (${casos.length} carregados)</h2>
+      <p class="muted peq">Carregue o arquivo casos.json (fica fora do GitHub por conter títulos da NANDA-I, NOC e NIC). Carregar de novo substitui os casos de mesmo id.</p>
+      <div class="linha"><input type="file" id="arq-casos" accept="application/json,.json"><span class="muted peq" id="msg-casos">${casos.map((c) => esc(c.titulo)).join(', ')}</span></div>
+    </section>
+    <section class="painel"><h2>Exportar</h2>
+      <div class="linha"><button class="btn" id="exp-json">Tudo em JSON</button><button class="btn" id="exp-itens">Respostas por item (CSV)</button><button class="btn" id="exp-tempos">Tempos por parte (CSV)</button><button class="btn" id="exp-quest">Questionário de clareza (CSV)</button></div>
+      <p class="muted peq">CSV com ponto e vírgula, pronto para o R (read.csv2).</p>
+    </section>`;
+}
+
+function exportar(tipo) {
+  const nomeDe = (codigo) => convites.find((c) => c.codigo === codigo);
+  if (tipo === 'json') return baixar('crivo-dados.json', JSON.stringify({ convites, respostas, casos, exportadoEm: new Date().toISOString() }, null, 2), 'application/json');
+  const L = [];
+  if (tipo === 'itens') {
+    L.push(['codigo', 'papel', 'caso', 'item', 'valor']);
+    Object.entries(respostas).forEach(([cod, r]) => Object.entries(r.estado?.respostas || {}).forEach(([caso, x]) => Object.entries(x.r || {}).forEach(([k, v]) => L.push([cod, nomeDe(cod)?.papel, caso, k, v]))));
+    return baixar('crivo-itens.csv', csv(L), 'text/csv');
+  }
+  if (tipo === 'tempos') {
+    L.push(['codigo', 'papel', 'caso', 'parte', 'segundos', 'concluido']);
+    Object.entries(respostas).forEach(([cod, r]) => Object.entries(r.estado?.respostas || {}).forEach(([caso, x]) => {
+      [1, 2, 3, 4, 5].forEach((p) => L.push([cod, nomeDe(cod)?.papel, caso, p, Math.round((x.tempos?.partes?.[p] || 0) / 1000), x.concluido ? 1 : 0]));
+      L.push([cod, nomeDe(cod)?.papel, caso, 'total', Math.round((x.tempos?.total || 0) / 1000), x.concluido ? 1 : 0]);
+    }));
+    return baixar('crivo-tempos.csv', csv(L), 'text/csv');
+  }
+  L.push(['codigo', 'pergunta', 'valor']);
+  Object.entries(respostas).forEach(([cod, r]) => Object.entries(r.estado?.questionario || {}).forEach(([k, v]) => L.push([cod, k, v])));
+  baixar('crivo-questionario.csv', csv(L), 'text/csv');
+}
+
+el.addEventListener('submit', async (ev) => {
+  if (ev.target.id !== 'f-convite') return; ev.preventDefault();
+  const codigo = novoCodigo();
+  await F.setDoc(F.doc(db, 'convidados', codigo), { nome: document.getElementById('c-nome').value.trim(), email: document.getElementById('c-email').value.trim(), papel: document.getElementById('c-papel').value, uid: null, criadoEm: F.serverTimestamp() });
+  await carregar(); tela();
+});
+el.addEventListener('change', async (ev) => {
+  if (ev.target.id !== 'arq-casos' || !ev.target.files[0]) return;
+  const msg = document.getElementById('msg-casos');
+  try {
+    const lista = JSON.parse(await ev.target.files[0].text());
+    if (!Array.isArray(lista) || !lista.every((c) => c.id && Array.isArray(c.diagnosticos))) throw new Error('formato');
+    const lote = F.writeBatch(db);
+    lista.forEach((c, i) => lote.set(F.doc(db, 'casos', c.id), { ...c, ordem: i + 1 }));
+    await lote.commit(); await carregar(); tela();
+  } catch (e) { msg.textContent = 'Arquivo inválido: use o casos.json no formato do pré-teste.'; }
+});
+el.addEventListener('click', async (ev) => {
+  const b = ev.target.closest('button'); if (!b) return;
+  if (b.id === 'sair') { await A.signOut(auth); location.reload(); }
+  else if (b.dataset.copiar) { const t = linkDo(b.dataset.copiar); try { await navigator.clipboard.writeText(t); b.textContent = 'copiado'; } catch (e) { b.textContent = 'copie ao lado'; } }
+  else if (b.dataset.remover) { const p = document.getElementById('conf'); p.hidden = false; p.innerHTML = `Remover o convite e as respostas de ${esc(convites.find((c) => c.codigo === b.dataset.remover)?.nome)}? <button class="btn-link" data-confirmar="${b.dataset.remover}">Remover</button>`; }
+  else if (b.dataset.confirmar) { await F.deleteDoc(F.doc(db, 'respostas', b.dataset.confirmar)); await F.deleteDoc(F.doc(db, 'convidados', b.dataset.confirmar)); await carregar(); tela(); }
+  else if (b.id === 'exp-json') exportar('json');
+  else if (b.id === 'exp-itens') exportar('itens');
+  else if (b.id === 'exp-tempos') exportar('tempos');
+  else if (b.id === 'exp-quest') exportar('quest');
+  else if (b.id === 'entrar') { try { await A.signInWithPopup(auth, new A.GoogleAuthProvider()); } catch (e) { document.getElementById('msg-entrar').textContent = 'Não foi possível entrar. Tente de novo.'; } }
+});
+
+A.onAuthStateChanged(auth, async (u) => {
+  if (!u || u.isAnonymous) {
+    el.innerHTML = '<section class="painel" style="max-width:520px"><h1>CRIVO-PE · Administração</h1><p>Área do pesquisador.</p><div class="linha"><button class="btn btn-pri" id="entrar">Entrar com Google</button><span class="muted peq" id="msg-entrar"></span></div></section>';
+    return;
+  }
+  if (u.email !== ADMIN) { el.innerHTML = `<section class="painel"><h1>Sem permissão</h1><p>A conta ${esc(u.email)} não é a do pesquisador. <button class="btn-link" id="sair">Sair</button></p></section>`; return; }
+  try { await carregar(); tela(); } catch (e) { el.innerHTML = '<section class="painel"><h1>Erro ao carregar</h1><p>Confira se as regras do Firestore foram publicadas.</p></section>'; }
+});
+</script>
+</body>
+</html>

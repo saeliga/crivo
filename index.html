@@ -173,14 +173,15 @@ table.resumo-t { border-collapse: collapse; width: 100%; font-variant-numeric: t
       <strong>CRIVO-PE</strong>
       <span>Avaliação crítica de planos de enfermagem sugeridos por inteligência artificial</span>
     </div>
-    <div class="acoes"><span class="selo-mock">Pré-teste · protótipo</span></div>
+    <div class="acoes"><span class="muted peq" id="status-nuvem" role="status"></span><span class="selo-mock">Pré-teste</span></div>
   </div>
 </header>
 <main class="wrap" id="app" aria-live="polite"></main>
-<footer class="wrap rodape">Protótipo para ajuste de layout: as respostas ficam apenas neste navegador. Pesquisa de mestrado do PGENF/UFRN; casos clínicos fictícios.</footer>
+<footer class="wrap rodape" id="rodape">Pesquisa de mestrado do PGENF/UFRN. Casos clínicos fictícios.</footer>
 
+<script src="js/nuvem.js"></script>
 <script>
-window.iniciarCrivo = function () {
+window.iniciarCrivo = function (inicial) {
   'use strict';
   const CASOS = window.CRIVO_CASOS || [];
   const CHAVE = 'crivo-pre-teste-v1';
@@ -199,12 +200,20 @@ window.iniciarCrivo = function () {
   function novoEstado() {
     return { etapa: 'inicio', avaliador: {}, casoAtual: null, parteAtual: 1, respostas: {}, questionario: {} };
   }
-  let E = carregar();
+  const NUVEM = !!(inicial && window.crivoNuvem && window.crivoNuvem.ativo);
+  let E = NUVEM ? Object.assign(novoEstado(), inicial.estado || {}) : carregar();
+  if (NUVEM && inicial.convite && !E.avaliador.nome) { E.avaliador.nome = inicial.convite.nome || ''; E.avaliador.email = inicial.convite.email || ''; }
+  document.getElementById('rodape').textContent = NUVEM
+    ? 'Pesquisa de mestrado do PGENF/UFRN. Casos clínicos fictícios. Suas respostas são salvas automaticamente; você pode fechar e voltar pelo mesmo link.'
+    : 'Modo local: as respostas ficam apenas neste navegador. Pesquisa de mestrado do PGENF/UFRN; casos clínicos fictícios.';
   function carregar() {
     try { const t = localStorage.getItem(CHAVE); if (t) return Object.assign(novoEstado(), JSON.parse(t)); } catch (e) { /* sem armazenamento */ }
     return novoEstado();
   }
-  function salvar() { try { localStorage.setItem(CHAVE, JSON.stringify(E)); } catch (e) { /* sem armazenamento */ } }
+  function salvar(imediato) {
+    if (NUVEM) { window.crivoNuvem.salvar(E, imediato === true); return; }
+    try { localStorage.setItem(CHAVE, JSON.stringify(E)); } catch (e) { /* sem armazenamento */ }
+  }
   function rc(id) {
     if (!E.respostas[id]) E.respostas[id] = { r: {}, tempos: { total: 0, partes: {} }, inicio: null, fim: null, concluido: false };
     return E.respostas[id];
@@ -254,8 +263,9 @@ window.iniciarCrivo = function () {
     if (pt) pt.classList.toggle('pausa', !contando());
   }
   function iniciarRelogio() { ultimo = Date.now(); clearInterval(timer); timer = setInterval(() => { tick(); }, 1000); }
-  setInterval(salvar, 5000);
-  document.addEventListener('visibilitychange', () => { tick(); salvar(); });
+  // Na nuvem, o relógio é gravado a cada minuto (as respostas, logo após cada mudança).
+  setInterval(salvar, NUVEM ? 60000 : 5000);
+  document.addEventListener('visibilitychange', () => { tick(); salvar(document.visibilityState === 'hidden'); });
 
   // ---------------------------------------------------------------- componentes
   function escala(k, rot, nums) {
@@ -466,13 +476,13 @@ window.iniciarCrivo = function () {
         <div class="painel tabela-rolagem"><table class="resumo-t"><thead><tr><th>Caso</th>${PARTES.map((p) => `<th>Parte ${p.n}</th>`).join('')}<th>Total</th></tr></thead><tbody>
           ${CASOS.map((c) => { const t = rc(c.id).tempos; return `<tr><td>${esc(c.titulo)}</td>${PARTES.map((p) => `<td>${mmss(t.partes[p.n])}</td>`).join('')}<td><strong>${mmss(t.total)}</strong></td></tr>`; }).join('')}
         </tbody></table></div>
-        <section class="painel pilha"><h2>Dados do protótipo</h2>
+        ${NUVEM ? '<section class="painel"><p>Suas respostas e os tempos já foram enviados ao pesquisador. Você pode fechar esta página.</p></section>' : `<section class="painel pilha"><h2>Dados do modo local</h2>
           <p class="muted peq">Na versão final, as respostas vão direto para a base da pesquisa. Neste protótipo, copie os dados e envie ao pesquisador.</p>
           <textarea id="dados-json" readonly style="min-height:180px;font-family:ui-monospace,Consolas,monospace;font-size:.8rem">${esc(JSON.stringify(dados, null, 2))}</textarea>
           <div class="linha"><button class="btn btn-pri" id="btn-copiar">Copiar dados</button><span class="muted peq" id="msg-copiar"></span>
             <button class="btn" id="btn-reiniciar" style="margin-left:auto">Recomeçar do zero</button></div>
           <p class="aviso" id="conf-reiniciar" hidden>Isso apaga as respostas e os tempos deste navegador. <button class="btn-link" id="btn-reiniciar-sim">Apagar e recomeçar</button></p>
-        </section>
+        </section>`}
       </div>`;
   }
 
@@ -483,7 +493,7 @@ window.iniciarCrivo = function () {
     else if (E.etapa === 'caso') telaCaso();
     else if (E.etapa === 'questionario') telaQuestionario();
     else telaFim();
-    salvar();
+    salvar(E.etapa === 'fim');
   }
   function ir(etapa) { tick(); E.etapa = etapa; E.mostrarPend = false; render(); window.scrollTo(0, 0); }
 
@@ -541,6 +551,16 @@ window.iniciarCrivo = function () {
 };
 // Casos: casos.js (reais, fora do repositório público); se não existir, os de exemplo.
 (function carregarCasos() {
+  if (window.crivoNuvem && window.crivoNuvem.ativo) {
+    document.getElementById('app').innerHTML = '<p class="muted">Carregando…</p>';
+    window.crivoNuvem.iniciar().then((r) => { window.CRIVO_CASOS = r.casos; window.iniciarCrivo(r); }).catch((e) => {
+      const msg = e && (e.codigo === 'sem_codigo' || e.codigo === 'convite_invalido')
+        ? 'Acesse pelo link individual que você recebeu do pesquisador. Se o link não funcionar, peça um novo.'
+        : 'Não foi possível conectar. Verifique a internet e recarregue a página.';
+      document.getElementById('app').innerHTML = '<section class="painel pilha" style="max-width:640px"><h1>Acesso ao pré-teste</h1><p>' + msg + '</p></section>';
+    });
+    return;
+  }
   const s = document.createElement('script');
   s.src = 'casos.js';
   s.onload = () => window.iniciarCrivo();
