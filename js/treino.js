@@ -1,8 +1,8 @@
 // Módulos do treinamento autoinstrucional do CRIVO-PE.
 // Texto do pesquisador; sem títulos da NANDA-I, da NOC ou da NIC (direitos autorais).
 // O caso guiado, com gabarito comentado, vem junto com os casos (campo treino: true).
-// A descrição dos níveis da EADE-2 é um resumo operacional; a escala completa é a de
-// Matos e Cruz (2013), usada mediante autorização das autoras.
+// O módulo 2 segue as orientações de uso da EADE-2 enviadas pelas autoras
+// (Matos; Cruz), com autorização para uso nesta pesquisa.
 window.CRIVO_MODULOS = [
   {
     titulo: 'Como avaliar',
@@ -38,22 +38,46 @@ window.CRIVO_MODULOS = [
     ],
   },
   {
-    titulo: 'Parte 1: diagnósticos',
-    minutos: 8,
+    titulo: 'Parte 1: diagnósticos e EADE-2',
+    minutos: 12,
     html: `
-      <p>A Parte 1 é respondida para <strong>todos</strong> os diagnósticos sugeridos.</p>
-      <h3>1.1 Acurácia pela EADE-2</h3>
-      <p>A Escala de Acurácia de Diagnósticos de Enfermagem (EADE-2) olha as <strong>pistas</strong> do caso que apoiam o diagnóstico e pergunta, para elas, quatro coisas: estão <strong>presentes</strong>? São <strong>relevantes</strong>? São <strong>específicas</strong> desse diagnóstico? São <strong>coerentes</strong> com ele? A partir disso, classifique a acurácia:</p>
+      <p>A Parte 1 é respondida para <strong>todos</strong> os diagnósticos sugeridos. O item 1.1 é a Escala de Acurácia de Diagnóstico de Enfermagem, versão 2 (EADE-2), aplicada na íntegra, conforme as orientações de uso das autoras (Matos; Cruz). O item 1.2 é próprio do CRIVO-PE.</p>
+      <h3>O que a EADE-2 mede</h3>
+      <p>O grau com que um diagnóstico tem sustentação no conjunto de informações clínicas escritas do paciente. A acurácia é o grau de relevância, especificidade e coerência das pistas existentes para o diagnóstico. Para usar bem a escala, é preciso ter claros estes conceitos:</p>
+      <ul>
+        <li><strong>Pistas:</strong> manifestações do paciente que representam indícios, vestígios, ou sinais e sintomas do diagnóstico avaliado.</li>
+        <li><strong>Relevância da pista:</strong> grau com que uma pista (ou um conjunto de pistas) é necessária para indicar o diagnóstico.</li>
+        <li><strong>Especificidade da pista:</strong> grau com que uma pista (ou um conjunto de pistas) é característica do diagnóstico.</li>
+        <li><strong>Coerência da pista:</strong> grau com que uma pista (ou um conjunto de pistas) é consistente com o diagnóstico e com o conjunto das informações disponíveis.</li>
+      </ul>
+      <h3>Como aplicar</h3>
+      <ol>
+        <li><strong>Antes</strong> de julgar, leia com cuidado todo o resumo clínico.</li>
+        <li>Depois, submeta <strong>cada</strong> diagnóstico à escala, diante do conjunto dos dados. Volte ao resumo sempre que precisar.</li>
+        <li>Consulte a <strong>NANDA-I</strong> sempre que necessário. Tenha a sua à mão: a plataforma não traz a classificação.</li>
+      </ol>
       <div class="tabela-rolagem"><table class="resumo-t">
-        <thead><tr><th>Nível</th><th>Em resumo</th></tr></thead>
+        <thead><tr><th>Item</th><th>Pergunta</th><th>Respostas</th><th>Orientação</th></tr></thead>
         <tbody>
-          <tr><td>Alta</td><td>Há pistas no caso, relevantes, específicas e coerentes com o diagnóstico.</td></tr>
-          <tr><td>Moderada</td><td>Há pistas relevantes e coerentes, mas pouco específicas: o mesmo conjunto sustentaria outro diagnóstico.</td></tr>
-          <tr><td>Baixa</td><td>Há pistas, mas de pouca relevância ou especificidade, ou só em parte coerentes.</td></tr>
-          <tr><td>Nula</td><td>Não há pistas no caso que sustentem o diagnóstico, ou os dados o contradizem.</td></tr>
+          <tr><td>1</td><td>Há pista(s) para o diagnóstico?</td><td>Sim · Não</td><td>Se houver pelo menos uma pista, independente da relevância, especificidade e coerência, marque sim. Se não, os outros itens não se aplicam: a escala termina aqui para esse diagnóstico.</td></tr>
+          <tr><td>2</td><td>A relevância da(s) pista(s) existente(s) é:</td><td>Alta/Moderada · Baixa</td><td rowspan="3">Se houver pistas nos dois graus, indique apenas o mais elevado (Alta/Moderada).</td></tr>
+          <tr><td>3</td><td>A especificidade da(s) pista(s) existente(s) é:</td><td>Alta/Moderada · Baixa</td></tr>
+          <tr><td>4</td><td>A coerência da(s) pista(s) existente(s) é:</td><td>Alta/Moderada · Baixa</td></tr>
+          <tr><td>5</td><td>Você manteria esse diagnóstico?</td><td>Sim · Não</td><td>Mesmo com pistas, responda não se o diagnóstico não for prioritário para a situação do paciente, não direcionar intervenções adequadas ou se outro diagnóstico explicar melhor a resposta do paciente. Não pontua.</td></tr>
         </tbody></table></div>
-      <p>A classificação é sobre <strong>o caso</strong>, não sobre as evidências que a IA escolheu. Se a IA listou uma evidência errada, mas o caso tem outras pistas boas, a acurácia pode continuar alta.</p>
-      <h3>1.2 Evidência por evidência</h3>
+      <h3>Escore e categoria</h3>
+      <p>A plataforma calcula sozinha. Item 1 sim vale 1; alta/moderada vale 1 no item 2, 3,5 no item 3 e 8 no item 4; baixa vale 0.</p>
+      <div class="tabela-rolagem"><table class="resumo-t">
+        <thead><tr><th>Escore</th><th>Categoria</th><th>Interpretação</th></tr></thead>
+        <tbody>
+          <tr><td>0</td><td>Nula</td><td>Não há pistas que indiquem o diagnóstico.</td></tr>
+          <tr><td>1</td><td>Baixa</td><td>As pistas existentes têm baixa relevância, baixa especificidade e baixa coerência.</td></tr>
+          <tr><td>2; 4,5; 5,5</td><td>Moderada</td><td>Coerência baixa com os dados, mas pistas de relevância e/ou especificidade alta ou moderada.</td></tr>
+          <tr><td>9; 10; 12,5; 13,5</td><td>Alta</td><td>Pistas de coerência alta ou moderada com os dados, e também de relevância e/ou especificidade alta ou moderada.</td></tr>
+        </tbody></table></div>
+      <p>Na prática, a <strong>coerência</strong> separa a acurácia alta das demais, e a <strong>presença</strong> de pista separa a nula da baixa.</p>
+      <p>A classificação é sobre <strong>as pistas do caso</strong>, não sobre as evidências que a IA escolheu. Se a IA listou uma evidência errada, mas o caso tem outras pistas boas, a acurácia pode continuar alta.</p>
+      <h3>1.2 Evidência por evidência (CRIVO-PE)</h3>
       <p>Para cada característica definidora, fator relacionado ou fator de risco indicado pela IA:</p>
       <ul>
         <li><strong>Sim</strong>: há no resumo um dado que a sustenta, de forma explícita ou por equivalência clínica direta (SpO<sub>2</sub> de 88% sustenta hipoxemia).</li>
@@ -65,9 +89,18 @@ window.CRIVO_MODULOS = [
         ops: ['Sim', 'Não'], certo: 1, exp: 'O dado é contradito pelo resumo.' },
       { k: 'm2q2', item: '1.2 · Cada evidência indicada pela IA está sustentada pelos dados do caso?', perg: 'O resumo diz "FiO2 50% e PEEP 10 para SpO2 de 93%". A IA indica "Hipoxemia" como evidência. A evidência está sustentada?',
         ops: ['Sim', 'Não'], certo: 0, exp: 'Precisar de FiO2 alta e PEEP para manter 93% é equivalência clínica direta de hipoxemia.' },
-      { k: 'm2q3', item: '1.1 · Acurácia do diagnóstico pela EADE-2 (alta, moderada, baixa ou nula)', perg: 'A IA indicou uma evidência que não existe no caso, mas o caso tem outras pistas relevantes, específicas e coerentes para o mesmo diagnóstico. Como classificar a acurácia?',
-        ops: ['Nula, porque uma evidência é falsa', 'Pode ser alta, porque a acurácia olha todas as pistas do caso', 'Baixa, para registrar o erro'], certo: 1,
-        exp: 'O erro na evidência é registrado no 1.2. O 1.1 classifica o diagnóstico diante de todas as pistas do caso.' },
+      { k: 'm2q4', item: 'EADE-2, item 1 · Há pista(s) para o diagnóstico?', perg: 'O caso tem uma única pista para o diagnóstico, pouco relevante, pouco específica e contradita pelos demais dados. Qual a categoria de acurácia?',
+        ops: ['Nula', 'Baixa', 'Moderada'], certo: 1,
+        exp: 'Há pista, então o item 1 é sim e o escore é 1: acurácia baixa. Nula é só quando não há pista alguma.' },
+      { k: 'm2q5', item: 'EADE-2, item 3 · A especificidade da(s) pista(s) existente(s) é:', perg: 'Entre as pistas do caso, uma é muito característica do diagnóstico e as outras são pouco características. O que marcar?',
+        ops: ['Alta/Moderada', 'Baixa'], certo: 0,
+        exp: 'Se houver pistas nos dois graus, indique apenas o mais elevado.' },
+      { k: 'm2q6', item: 'EADE-2, item 4 · A coerência da(s) pista(s) existente(s) é:', perg: 'As pistas são relevantes e específicas, mas outros dados do resumo contradizem o diagnóstico. A acurácia pode ser alta?',
+        ops: ['Sim', 'Não, no máximo moderada'], certo: 1,
+        exp: 'Com coerência baixa, o escore fica entre 2 e 5,5: acurácia moderada, no máximo.' },
+      { k: 'm2q3', item: 'EADE-2 · acurácia do diagnóstico', perg: 'A IA indicou uma evidência que não existe no caso, mas o caso tem outras pistas relevantes, específicas e coerentes para o mesmo diagnóstico. Como fica a acurácia?',
+        ops: ['Nula, porque uma evidência é falsa', 'Pode ser alta, porque a escala olha todas as pistas do caso', 'Baixa, para registrar o erro'], certo: 1,
+        exp: 'O erro na evidência é registrado no 1.2. A EADE-2 classifica o diagnóstico diante de todas as pistas do caso.' },
     ],
   },
   {
@@ -125,6 +158,7 @@ window.CRIVO_MODULOS = [
         <li>À esquerda fica o <strong>caso</strong>: o resumo clínico e o plano da IA. No computador, ele acompanha a rolagem; no celular, fica acima do instrumento.</li>
         <li>Os números nos círculos são a <strong>ordem de prioridade</strong> dada pela IA. Os três primeiros, em verde, têm NOC e NIC avaliados.</li>
         <li>À direita fica o <strong>instrumento</strong>, dividido nas cinco partes. Os botões no alto mostram quantas respostas faltam em cada parte; você pode ir e voltar livremente.</li>
+        <li>Na Parte 1, os itens 2 a 5 da EADE-2 aparecem quando o item 1 é "sim". O escore e a categoria de acurácia aparecem logo abaixo, calculados pela plataforma.</li>
         <li>O <strong>relógio</strong> conta só o tempo ativo. Use "Pausar" se for interrompido; ao sair da página ele para sozinho.</li>
         <li><strong>Concluir caso</strong> só funciona com todas as respostas obrigatórias. Se faltar alguma, a plataforma leva você até ela.</li>
         <li>Tudo é salvo automaticamente. Para continuar depois, abra o mesmo link.</li>

@@ -30,7 +30,8 @@ window.CRIVO_CASOS = [
     ],
     // Gabarito: ok = respostas esperadas; c = comentário mostrado após concluir o caso.
     gabarito: {
-      'p1.d1.eade': { ok: ['alta'], c: 'Comentário do gabarito.' },
+      'p1.d1.e1': { ok: ['sim'], c: 'Comentário do gabarito.' },
+      'p1.d1.eade': { ok: ['alta'], c: 'Comentário do gabarito (categoria calculada pela EADE-2).' },
       'p1.d1.ev0': { ok: ['sim'], c: 'Comentário do gabarito.' },
     },
   },

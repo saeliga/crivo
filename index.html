@@ -158,6 +158,7 @@ textarea { min-height: 70px; resize: vertical; }
 .subitem > .peq { font-size: .92rem; }
 .subitem.ev { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px 16px; align-items: center; padding-block: 2px; }
 @media (max-width: 560px) { .subitem.ev { grid-template-columns: 1fr; } }
+.eade-res { font-size: .9rem; background: var(--surface-2); border-radius: 8px; padding: 6px 10px; align-self: flex-start; font-variant-numeric: tabular-nums; }
 .cod { color: var(--muted); font-variant-numeric: tabular-nums; margin-right: 8px; font-weight: 500; }
 .rodape-parte { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; align-items: center; }
 .aviso { color: var(--warn); font-weight: 600; font-size: .9rem; }
@@ -232,6 +233,8 @@ window.iniciarCrivo = function (inicial) {
   // Treinamento: situacao novo | andamento | pulado | concluido; pulou fica registrado mesmo se voltar depois.
   function novoTreino() { return { situacao: 'novo', pulou: false, mod: 0, vistos: {}, tempos: {}, quiz: {}, inicio: null, fim: null }; }
   const NUVEM = !!(inicial && window.crivoNuvem && window.crivoNuvem.ativo);
+  // Juízes da Fase 4 fazem o treinamento obrigatoriamente (a EADE-2 exige avaliador esclarecido sobre os conceitos).
+  const JUIZ = !!(NUVEM && inicial.convite && inicial.convite.papel === 'juiz');
   let E = NUVEM ? Object.assign(novoEstado(), inicial.estado || {}) : carregar();
   if (NUVEM && inicial.convite && !E.avaliador.nome) { E.avaliador.nome = inicial.convite.nome || ''; E.avaliador.email = inicial.convite.email || ''; }
   if (!E.treino) E.treino = novoTreino();
@@ -262,7 +265,9 @@ window.iniciarCrivo = function (inicial) {
   function itensDaParte(c, n) {
     const L = [];
     if (n === 1) c.diagnosticos.forEach((d) => {
-      L.push({ k: `p1.${d.id}.eade`, req: true });
+      const r = rc(c.id).r;
+      L.push({ k: `p1.${d.id}.e1`, req: true });
+      if (r[`p1.${d.id}.e1`] === 'sim') [2, 3, 4, 5].forEach((n2) => L.push({ k: `p1.${d.id}.e${n2}`, req: true }));
       d.evidencias.forEach((_, i) => L.push({ k: `p1.${d.id}.ev${i}`, req: true }));
     });
     if (n === 2) top3(c).forEach((d) => (d.noc || []).forEach((_, i) => { L.push({ k: `p2.${d.id}.${i}.21`, req: true }); L.push({ k: `p2.${d.id}.${i}.22`, req: true }); }));
@@ -275,6 +280,22 @@ window.iniciarCrivo = function (inicial) {
     }
     return L;
   }
+  // EADE-2 (Matos; Cruz): item 1 sim = 1; itens 2, 3 e 4 alta/moderada = 1, 3,5 e 8; item 5 não pontua.
+  // Escore 0 = nula; 1 = baixa; 2 a 5,5 = moderada; 9 a 13,5 = alta.
+  const AM = 'alta/moderada';
+  function calcEade(r, id) {
+    const v = (n) => r[`p1.${id}.e${n}`];
+    if (v(1) === 'não') return { escore: 0, cat: 'nula' };
+    if (v(1) !== 'sim' || !v(2) || !v(3) || !v(4)) return null;
+    const escore = 1 + (v(2) === AM ? 1 : 0) + (v(3) === AM ? 3.5 : 0) + (v(4) === AM ? 8 : 0);
+    return { escore, cat: escore === 1 ? 'baixa' : escore < 9 ? 'moderada' : 'alta' };
+  }
+  function atualizarEade(r, id) {
+    if (r[`p1.${id}.e1`] === 'não') [2, 3, 4, 5].forEach((n) => delete r[`p1.${id}.e${n}`]);
+    const x = calcEade(r, id);
+    if (x) { r[`p1.${id}.escore`] = x.escore; r[`p1.${id}.eade`] = x.cat; } else { delete r[`p1.${id}.escore`]; delete r[`p1.${id}.eade`]; }
+  }
+  const numBR = (x) => String(x).replace('.', ',');
   function pendentes(c, n) { const r = rc(c.id).r; return itensDaParte(c, n).filter((i) => i.req && !r[i.k]).length; }
   function totalPendentes(c) { return PARTES.reduce((s, p) => s + pendentes(c, p.n), 0); }
 
@@ -384,7 +405,7 @@ window.iniciarCrivo = function (inicial) {
     app.innerHTML = `
       <div class="pilha" style="max-width:960px">
         <div class="pilha" style="gap:8px"><p class="rotulo">Treinamento</p><h1>Antes de avaliar</h1>
-          <p class="muted">${MODULOS.length} módulos curtos${CASO_TREINO ? ' e um caso guiado, com gabarito comentado ao final' : ''}. Leva cerca de ${minutosTreino()} minutos, e o tempo é registrado. Se você já conhece o CRIVO-PE e a EADE-2, pode pular; o treinamento continua disponível na tela dos casos.</p></div>
+          <p class="muted">${MODULOS.length} módulos curtos${CASO_TREINO ? ' e um caso guiado, com gabarito comentado ao final' : ''}. Leva cerca de ${minutosTreino()} minutos, e o tempo é registrado. ${JUIZ ? 'Os casos são liberados depois do treinamento.' : 'Se você já conhece o CRIVO-PE e a EADE-2, pode pular; o treinamento continua disponível na tela dos casos.'}</p></div>
         <section class="painel pilha">
           <ol class="modulos">
             ${MODULOS.map((m, i) => `<li><span class="nm"><span class="cod">${i + 1}</span><span>${esc(m.titulo)} <span class="muted peq">· cerca de ${m.minutos} min</span></span></span>
@@ -396,7 +417,7 @@ window.iniciarCrivo = function (inicial) {
         <div class="linha">
           ${acabou ? '<button class="btn btn-pri" id="btn-ir-casos">Ir para os casos</button>'
             : `<button class="btn btn-pri" data-modulo="${proximoModulo()}">${t.situacao === 'novo' || t.situacao === 'pulado' ? 'Começar o treinamento' : 'Continuar o treinamento'}</button>
-               <button class="btn" id="btn-pular">${t.situacao === 'pulado' ? 'Voltar aos casos' : 'Pular o treinamento'}</button>`}
+               ${JUIZ ? '' : `<button class="btn" id="btn-pular">${t.situacao === 'pulado' ? 'Voltar aos casos' : 'Pular o treinamento'}</button>`}`}
         </div>
         <p class="aviso" id="conf-pular" hidden>Tem certeza? O treinamento explica as regras de decisão de cada item. <button class="btn-link" id="btn-pular-sim">Pular e ir para os casos</button></p>
       </div>`;
@@ -440,6 +461,7 @@ window.iniciarCrivo = function (inicial) {
   function telaCasos() {
     const todos = CASOS_AV.every((c) => rc(c.id).concluido);
     const st = situacaoTreino();
+    const bloqueado = JUIZ && T().situacao !== 'concluido';
     app.innerHTML = `
       <div class="pilha">
         <div class="pilha" style="gap:6px"><p class="rotulo">Casos do pré-teste</p><h1>Escolha um caso para avaliar</h1>
@@ -452,7 +474,7 @@ window.iniciarCrivo = function (inicial) {
             <span class="pill status ${st[0]}">${st[1]}</span>
             <h2>${esc(c.titulo)}</h2><p class="muted">${esc(c.subtitulo)} · ${c.diagnosticos.length} diagnósticos sugeridos</p>
             <p class="peq">Tempo ativo: <span class="tempo">${mmss(x.tempos.total)}</span></p>
-            <div class="linha"><button class="btn ${x.concluido ? '' : 'btn-pri'}" data-abrir="${c.id}">${x.concluido ? 'Revisar' : x.inicio ? 'Continuar' : 'Iniciar'}</button></div>
+            <div class="linha"><button class="btn ${x.concluido ? '' : 'btn-pri'}" data-abrir="${c.id}" ${bloqueado ? 'disabled' : ''}>${x.concluido ? 'Revisar' : x.inicio ? 'Continuar' : 'Iniciar'}</button>${bloqueado ? '<span class="muted peq">Conclua o treinamento para liberar.</span>' : ''}</div>
           </article>`;
         }).join('')}</div>
         <div class="linha"><button class="btn ${todos ? 'btn-pri' : ''}" id="btn-quest" ${todos ? '' : 'disabled'}>Ir para o questionário final</button>
@@ -477,11 +499,30 @@ window.iniciarCrivo = function (inicial) {
     </aside>`;
   }
 
+  function blocoEade(c, d) {
+    const r = rc(c.id).r; const k = (n) => `p1.${d.id}.e${n}`;
+    const AMB = ['Alta/Moderada', 'Baixa'];
+    const sub = (n, perg, rot) => `<div class="subitem"><span class="peq"><span class="cod">Item ${n}</span>${perg}</span>${escala(k(n), rot, false)}</div>`;
+    const x = calcEade(r, d.id);
+    const g = emRevisao() ? (caso(E.casoAtual).gabarito || {})[`p1.${d.id}.eade`] : null;
+    const pend = E.mostrarPend && (!r[k(1)] || (r[k(1)] === 'sim' && [2, 3, 4, 5].some((n) => !r[k(n)])));
+    return `<div class="item${pend ? ' pend' : ''}"><p class="perg"><span class="cod">1.1</span>Acurácia do diagnóstico pela EADE-2</p>
+      ${sub(1, 'Há pista(s) para o diagnóstico?', ['Sim', 'Não'])}
+      ${r[k(1)] === 'sim' ? `
+        ${sub(2, 'A relevância da(s) pista(s) existente(s) é:', AMB)}
+        ${sub(3, 'A especificidade da(s) pista(s) existente(s) é:', AMB)}
+        ${sub(4, 'A coerência da(s) pista(s) existente(s) é:', AMB)}
+        ${sub(5, 'Você manteria esse diagnóstico?', ['Sim', 'Não'])}` : r[k(1)] === 'não' ? '<p class="muted peq">Sem pistas: os demais itens da EADE-2 não se aplicam a este diagnóstico.</p>' : ''}
+      ${x ? `<p class="eade-res">Escore <strong>${numBR(x.escore)}</strong> · acurácia <strong>${x.cat}</strong></p>` : ''}
+      ${g ? `<div class="retorno ${x && g.ok.includes(x.cat) ? 'certo' : 'errado'}"><strong>${x && g.ok.includes(x.cat) ? '✓ Categoria coincide com o gabarito' : 'Categoria no gabarito: ' + esc(g.ok.join(' ou '))}</strong>${esc(g.c)}</div>` : ''}
+    </div>`;
+  }
+
   function corpoParte(c, n) {
     if (n === 1) return `
-      <div class="instrucao"><strong>Parte 1.</strong> Para cada diagnóstico, classifique a acurácia pela EADE-2, considerando presença, relevância, especificidade e coerência das pistas do caso, e diga se cada evidência marcada pela IA está sustentada pelos dados.</div>
+      <div class="instrucao"><strong>Parte 1.</strong> Leia todo o resumo clínico antes de começar. Para cada diagnóstico, responda os itens da EADE-2 diante do conjunto dos dados do caso, voltando ao resumo sempre que precisar e consultando a NANDA-I quando necessário. Depois, diga se cada evidência marcada pela IA está sustentada pelos dados.</div>
       ${c.diagnosticos.map((d) => `<div class="bloco"><h3><span class="prio ${d.prioridade > 3 ? 'fora' : ''}">${d.prioridade}</span>${esc(d.titulo)}</h3>
-        ${item(`p1.${d.id}.eade`, '1.1', 'Acurácia do diagnóstico (EADE-2)', escala(`p1.${d.id}.eade`, ['Alta', 'Moderada', 'Baixa', 'Nula'], false))}
+        ${blocoEade(c, d)}
         ${item(d.evidencias.map((_, i) => `p1.${d.id}.ev${i}`), '1.2', 'Cada evidência indicada pela IA está sustentada pelos dados do caso?',
           d.evidencias.map((e, i) => `<div class="subitem ev"><span>${esc(e)}</span>${simNao(`p1.${d.id}.ev${i}`)}</div>`).join(''))}
       </div>`).join('')}`;
@@ -635,8 +676,10 @@ window.iniciarCrivo = function (inicial) {
       tick(); const y = window.scrollY; render(); window.scrollTo(0, y); return;
     }
     if (t.dataset.k && t.type === 'radio') {
-      rc(E.casoAtual).r[t.dataset.k] = t.value; salvar();
-      const precisaRedesenhar = /p4\..+\.42$|p5\.5[34]$/.test(t.dataset.k);
+      const r = rc(E.casoAtual).r; r[t.dataset.k] = t.value;
+      const me = /^p1\.(.+)\.e[1-5]$/.exec(t.dataset.k); if (me) atualizarEade(r, me[1]);
+      salvar();
+      const precisaRedesenhar = /p4\..+\.42$|p5\.5[34]$|^p1\..+\.e[1-5]$/.test(t.dataset.k);
       if (precisaRedesenhar) { tick(); const y = window.scrollY; render(); window.scrollTo(0, y); }
       else atualizarContagem();
     }
